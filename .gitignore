@@ -1,0 +1,5 @@
+# compiled executables
+**/main
+
+# object files
+**/*.o

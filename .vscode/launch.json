@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug NASM (macOS LLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/${input:day}/main",
+            "args": [],
+            "cwd": "${workspaceFolder}/${input:day}"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "day",
+            "type": "promptString",
+            "description": "Which day to debug (e.g., 01, 02, 03)?",
+            "default": "01"
+        }
+    ]
+}
