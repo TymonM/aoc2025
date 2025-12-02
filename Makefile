@@ -20,6 +20,11 @@ LD_CMD = ld
 # The .PHONY declaration ensures that make won't confuse a file named 05 with the target 05
 .PHONY: $(DIRS)
 
+# Prevent make from deleting intermediate object files
+# This is critical for LLDB debugging - the linker creates a debug map in the executable
+# that points to the object files, so they must exist for source-level debugging to work
+.PRECIOUS: %/main.o aocutils/utils.o
+
 # The main compilation pattern rule
 # Target: The executable file (e.g., 05/main)
 # Prerequisite: The object file (e.g., 05/main.o) which has an implicit rule defined below

@@ -89,11 +89,11 @@ _read_int:
 .done:
     ret
 
+; quicksort an array of 64-bit integers
+; note: always chooses first element as pivot
+; rdi = pointer to array
+; rsi = number of elements
 _sort:
-    ; quicksort an array of 64-bit integers
-    ; note: always chooses first element as pivot
-    ; rdi = pointer to array
-    ; rsi = number of elements
     sub rsp, 8 ; align stack to 16 byte boundary
 
     cmp rsi, 1
