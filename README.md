@@ -9,6 +9,10 @@ pbpaste | ./incify.sh > 05/input.inc
 
 cat input.txt | ./incify.sh > 05/input.inc
 ```
+or if you want to look fancy:
+```sh
+./incify.sh <input.txt> 05/input.inc
+```
 
 `test.inc` files are included, so you can see those for reference for how the `input.inc` files should be formatted.
 
