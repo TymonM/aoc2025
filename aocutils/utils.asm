@@ -3,30 +3,32 @@
 default rel
 
 section .text
+global _to_string
 global _write_int
 global _read_int
+global _memcmp
 global _sort
 
-; write the integer in rdi to stdout
-; followed by a newline
-_write_int:
+; convert rdi to a string
+; rdi = integer to convert
+; rsi = pointer to output buffer
+; returns rax = number of bytes written
+_to_string:
     test rdi, rdi
-    jz .print_zero ; special case for 0
+    jz .zero ; special case for 0
+    mov r8, 0 ; counter for number of bytes
 
-    mov r8, rdi ; our value to write
     push 10 ; so we know when to stop popping
 
 .getdigit:
-    test r8, r8
-    jz .print
-
     xor rdx, rdx
-    mov rax, r8
+    mov rax, rdi
     mov rcx, 10
     div rcx
     push rdx
-    mov r8, rax
-    jmp .getdigit
+    mov rdi, rax
+    test rdi, rdi
+    jnz .getdigit
 
 .print:
     pop rcx
@@ -34,25 +36,32 @@ _write_int:
     je .done
 
     add rcx, '0'
-    push rcx ; so that we can get a pointer to it
-    ; write the digit
-    mov rax, 0x2000004
-    mov rdi, 1
-    mov rsi, rsp
-    mov rdx, 1 ; 1 byte to write
-    syscall
-
-    pop rcx ; no longer need the char then
+    mov [rsi+1*r8], rcx
+    inc r8
     jmp .print
+.zero:
+    mov [rsi], '0'
+    mov rax, 1
+    ret
+.done:
+    mov rax, r8
+    ret
 
-.print_zero:
+; write the integer in rdi to stdout
+; followed by a newline
+_write_int:
+    sub rsp, 32 ; 32 bytes/chars should be enough
+    mov rsi, rsp
+    call _to_string
+    mov rdx, rax ; number of bytes
+
+    ; write the int
     mov rax, 0x2000004
     mov rdi, 1
-    lea rsi, [.zero]
-    mov rdx, 1
+    ; rsi still holds rsp
+    ; rdx has number of bytes
     syscall
 
-.done:
     ; write a newline
     mov rax, 0x2000004
     mov rdi, 1
@@ -60,13 +69,13 @@ _write_int:
     mov rdx, 1
     syscall
 
+    add rsp, 32 ; clean up the bytes
     ret
 
 .newline: db 10
-.zero db '0'
 
 ; read an integer from a string pointed to by [rdi]
-; the integer will be in rax
+; the integer will go to rax
 ; rdi will be advanced to the first char after the integer
 _read_int:
     xor rax, rax
@@ -88,6 +97,34 @@ _read_int:
 
 .done:
     ret
+
+; compare two strings of bytes
+; rdi and rsi = pointers to start of the two strings
+; rdx = number of bytes to compare
+; sets rax = 0 if equal, -1 if rdi string less, 1 if rdi string greater
+_memcmp:
+    test rdx, rdx
+    jz .equal
+.loop:
+    mov r8b, byte [rdi]
+    cmp r8b, byte [rsi]
+    jl .less
+    jg .greater
+    inc rdi
+    inc rsi
+    dec rdx
+    jnz .loop
+
+.equal:
+    xor rax, rax ; strings are equal
+    ret
+.less:
+    mov rax, -1
+    ret
+.greater:
+    mov rax, 1
+    ret
+
 
 ; quicksort an array of 64-bit integers
 ; note: always chooses first element as pivot
