@@ -3,3 +3,6 @@
 
 # object files
 **/*.o
+
+# input data
+**/input.inc
