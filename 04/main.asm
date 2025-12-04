@@ -10,6 +10,7 @@ global _start
 _start:
     call _init
     call _first
+    call _second
 
     xor edi, edi
     mov rax, 0x2000001 ; macOS exit syscall (0x2000000 + 1)
@@ -20,10 +21,9 @@ _start:
 ; the grid is created at grid_copy
 _init:
     ; rax = size of new grid
-    mov rax, input_bytes
-    add rax, height
-    add rax, width
-    add rax, width
+    mov rax, input_cells
+    add rax, height*2
+    add rax, width*2
     add rax, 4
 
     ; clear bss space for the new grid
@@ -35,9 +35,6 @@ _init:
     lea rdi, [grid_copy] ; point to start of new grid
     add rdi, width
     add rdi, 3 ; point to UL corner
-    mov rsi, rdi
-    add rsi, input_bytes ; move rsi to DR corner
-    sub rsi, height ; newlines don't count
 
     ; rcx = x, rdx = y
     mov rcx, 0
@@ -75,6 +72,32 @@ _init:
 _first:
     mov qword [output], 0 ; counter
 
+    call _reduce
+    
+    mov rdi, [output]
+    call _write_int
+    ret
+
+_second:
+    ; note that the grid is already reduced once by _first
+    ; and output is already set
+    ; we use this to our advantage, so we cleanup first, and then repeat reduces
+.loop:
+    call _cleanup
+    call _reduce
+    test rax, rax
+    jnz .loop
+
+    mov rdi, [output]
+    call _write_int
+    ret
+
+; _reduce 'reduces' the grid by replacing all removable '@' with 'x' marker
+; automatically increments output for each 'x'
+; Returns `found` flag in rax. Will be set to 1 if any 'x' was created, and 0 otherwise
+_reduce:
+    xor r9, r9 ; found = false
+
     sub rsp, 16 ; dx and dy counters
 
     ; rcx = x, rdx = y
@@ -85,8 +108,8 @@ _first:
     add rdi, width + 3 ; move to UL
 .loop:
     mov al, byte [rdi]
-    cmp al, '@'
-    jne .step_loop
+    cmp al, '.'
+    je .step_loop
 
     mov qword [rsp], -1 ; dx = -1
     mov qword [rsp+8], -1 ; dy = -1
@@ -95,8 +118,8 @@ _first:
     mov rax, [rsp+8] ; dy
     imul rax, width + 2
     add rax, [rsp] ; dx
-    cmp byte [rdi + rax], '@'
-    jne .step_scan_neighbours
+    cmp byte [rdi + rax], '.'
+    je .step_scan_neighbours
     inc qword r8
 .step_scan_neighbours:
     inc qword [rsp]
@@ -112,6 +135,8 @@ _first:
     cmp r8, 5
     jge .step_loop
     inc qword [output]
+    mov byte [rdi], 'x'
+    mov r9, 1 ; found = true
 
 .step_loop:
     inc rdi ; step cursor
@@ -125,8 +150,27 @@ _first:
     jl .loop
 .done:
     add rsp, 16
-    mov rdi, [output]
-    call _write_int
+    mov rax, r9
+    ret
+
+_cleanup:
+    ; rdi = cursor,
+    ; rsi = sentinel tells us when to stop
+    lea rdi, [grid_copy]
+    add rdi, width + 3 ; move to UL
+    lea rsi, [grid_copy]
+    add rsi, (width + 2) * (height + 2)
+    sub rsi, width + 3 ; move to DR corner
+.loop:
+    mov al, byte [rdi]
+    cmp al, 'x'
+    jne .step_loop
+    mov byte [rdi], '.'
+.step_loop:
+    inc rdi
+    cmp rdi, rsi
+    jl .loop
+    
     ret
 
 section .data
