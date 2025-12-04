@@ -7,6 +7,7 @@ global _to_string
 global _write_int
 global _read_int
 global _memcmp
+global _memset
 global _sort
 
 ; convert rdi to a string
@@ -123,6 +124,21 @@ _memcmp:
     ret
 .greater:
     mov rax, 1
+    ret
+
+; set a contiguous block of memory
+; rdi = pointer to memory
+; rsi = value to set
+; rdx = number of bytes
+_memset:
+    test rdx, rdx
+    jz .done
+.loop:
+    mov byte [rdi], sil
+    inc rdi
+    dec rdx
+    jnz .loop
+.done:
     ret
 
 
