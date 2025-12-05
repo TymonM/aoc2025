@@ -10,6 +10,7 @@ global _start
 _start:
     call _init
     call _first
+    ; call _second
 
     xor edi, edi
     mov rax, 0x2000001 ; macOS exit syscall (0x2000000 + 1)
@@ -19,7 +20,8 @@ _start:
 _init:
     mov rcx, input_lines ; lines remaining counter
     lea rdi, [input]
-    lea rsi, [ranges]
+    lea rsi, [range_lefts]
+    lea rdx, [range_rights]
 .read_range:
     cmp byte [rdi], 10 ; newline, ranges are done
     je .done_ranges
@@ -29,8 +31,8 @@ _init:
     add rsi, 8
     inc rdi ; skip hyphen
     call _read_int
-    mov [rsi], rax
-    add rsi, 8
+    mov [rdx], rax
+    add rdx, 8
     inc rdi ; skip newline
     pop rcx
     dec rcx
@@ -39,7 +41,7 @@ _init:
     ; count ranges
     mov rax, input_lines
     sub rax, rcx
-    imul rax, 16 ; 16 bytes per range (two qwords)
+    imul rax, 8 ; 8 bytes per range (one qword)
     mov [ranges_bytes], rax
 
     inc rdi ; skip newline
@@ -57,16 +59,15 @@ _init:
 
     ; count queries
     mov rax, input_lines
-    imul rax, 16 ; 16 bytes per line
+    imul rax, 8 ; 8 bytes per line
     sub rax, [ranges_bytes] ; only non-range lines
-    shr rax, 1 ; the remaing lines are only 8 bytes
     sub rax, 8 ; the newline is not a query
     mov [query_bytes], rax
     ret
 
 _first:
     mov qword [output], 0
-    ; rcx contains pointer to current query, rdx contains pointer to current range half
+    ; rcx contains offset to current query, rdx contains offset to current range
     mov rcx, 0
 .check_query:
     ; rax = x
@@ -76,16 +77,15 @@ _first:
     mov rdx, 0
 .check_range:
     ; r8 = lower
-    ; mov r8, [ranges + rdx]
-    lea rdi, [ranges]
+    ; mov r8, [range_lefts + rdx]
+    lea rdi, [range_lefts]
     add rdi, rdx
     mov r8, [rdi]
     cmp rax, r8
-    jl .next_range_and_skip ; if x < lower
-    add rdx, 8
+    jl .next_range ; if x < lower
     ; r8 = upper
-    ; mov r8, [ranges + 8*rdx]
-    lea rdi, [ranges]
+    ; mov r8, [range_rights + rdx]
+    lea rdi, [range_rights]
     add rdi, rdx
     mov r8, [rdi]
     cmp rax, r8
@@ -93,8 +93,6 @@ _first:
     add rdx, 8
     inc qword [output]
     jmp .next_query
-.next_range_and_skip:
-    add rdx, 8 ; because we bailed on lower, we still need to skip past upper
 .next_range:
     add rdx, 8
     cmp rdx, [ranges_bytes]
@@ -114,7 +112,8 @@ section .data
 
 section .bss
 output: resb 8
-ranges: resq 2*input_lines ; qword for L and for R
+range_lefts: resq input_lines ; qword for L
+range_rights: resq input_lines ; qword for R
 queries: resq input_lines ; qword for x
 ranges_bytes: resb 8
 query_bytes: resb 8
