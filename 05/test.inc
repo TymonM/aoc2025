@@ -1,0 +1,14 @@
+input:
+    db "3-5", 0xA
+    db "10-14", 0xA
+    db "16-20", 0xA
+    db "12-18", 0xA
+    db "", 0xA
+    db "1", 0xA
+    db "5", 0xA
+    db "8", 0xA
+    db "11", 0xA
+    db "17", 0xA
+    db "32", 0xA
+
+input_lines equ 11
