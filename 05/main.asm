@@ -3,6 +3,7 @@ default rel
 
 extern _read_int
 extern _write_int
+extern _sort
 
 section .text
 global _start
@@ -10,7 +11,7 @@ global _start
 _start:
     call _init
     call _first
-    ; call _second
+    call _second
 
     xor edi, edi
     mov rax, 0x2000001 ; macOS exit syscall (0x2000000 + 1)
@@ -101,6 +102,55 @@ _first:
     add rcx, 8 ; query was 8 bytes
     cmp rcx, [query_bytes]
     jl .check_query
+
+    mov rdi, [output]
+    call _write_int
+    ret
+
+_second:
+    mov qword [output], 0 ; acc
+
+    ; rdx contains number of ranges
+    mov rdx, [ranges_bytes]
+    shr rdx, 3 ; 8 bytes per range
+
+    ; sort ranges by left endpoint
+    lea rdi, [range_lefts]
+    lea rsi, [range_rights]
+    call _sort
+
+    ; rcx stores offset to current range
+    mov rcx, 0
+
+    ; rdx is our current right endpoint
+    mov rdx, -1
+
+.add_range:
+    ; r8=lower, r9=upper
+    lea rdi, [range_lefts]
+    add rdi, rcx
+    mov r8, [rdi]
+    lea rdi, [range_rights]
+    add rdi, rcx
+    mov r9, [rdi]
+
+    ; if lower > cur_r
+    cmp r8, rdx
+    jg .strictly_right
+    mov r8, rdx
+    inc r8 ; make it strictly right of rightmost endpoint
+.strictly_right:
+    mov r10, r9
+    sub r10, r8
+    inc r10 ; r10 now contains the size of the range
+    cmp r10, 0
+    jl .next_range
+    add [output], r10
+    mov rdx, r9 ; increase right endpoint
+.next_range:
+    add rcx, 8
+    cmp rcx, [ranges_bytes]
+    jl .add_range
 
     mov rdi, [output]
     call _write_int

@@ -145,30 +145,34 @@ _memset:
 ; quicksort an array of 64-bit integers
 ; note: always chooses first element as pivot
 ; rdi = pointer to array
-; rsi = number of elements
+; rsi = pointer to satellite array
+; rdx = number of elements
 _sort:
-    sub rsp, 8 ; align stack to 16 byte boundary
-
-    cmp rsi, 1
+    cmp rdx, 1
     jle .done
 
     mov rcx, 1
-    mov rdx, 0 ; num elements on the left
+    mov r8, 0 ; num elements on the left
 
 .partition:
-    cmp rcx, rsi
+    cmp rcx, rdx
     jge .recurse
 
     mov rax, [rdi + rcx * 8]
     cmp rax, [rdi]
     jge .partition_skip
 
-    inc rdx
+    inc r8
     ; swap
     mov rax, [rdi + rcx * 8]
-    mov r8, [rdi + rdx * 8]
-    mov [rdi + rcx * 8], r8
-    mov [rdi + rdx * 8], rax
+    mov r9, [rdi + r8 * 8]
+    mov [rdi + rcx * 8], r9
+    mov [rdi + r8 * 8], rax
+    ; swap satellite
+    mov rax, [rsi + rcx * 8]
+    mov r9, [rsi + r8 * 8]
+    mov [rsi + rcx * 8], r9
+    mov [rsi + r8 * 8], rax
 
 .partition_skip:
     inc rcx
@@ -177,29 +181,36 @@ _sort:
 .recurse:
     ; swap the pivot into place
     mov rax, [rdi]
-    mov r8, [rdi + rdx * 8]
-    mov [rdi], r8
-    mov [rdi + rdx * 8], rax
+    mov r9, [rdi + r8 * 8]
+    mov [rdi], r9
+    mov [rdi + r8 * 8], rax
+    ; and in the satellite
+    mov rax, [rsi]
+    mov r9, [rsi + r8 * 8]
+    mov [rsi], r9
+    mov [rsi + r8 * 8], rax
 
     ; rdi already contains what we want
+    ; so does rsi
     push rdi
     push rsi
     push rdx
-    mov rsi, rdx
+    push r8
+    mov rdx, r8
     call _sort
 
+    pop r8
     pop rdx
     pop rsi
     pop rdi
-    inc rdx
-    lea rdi, [rdi + rdx * 8]
-    sub rsi, rdx
-    call _sort
-    ; add rsp, 8
-    ; jmp _sort
+    inc r8
+    lea rdi, [rdi + r8 * 8]
+    lea rsi, [rsi + r8 * 8]
+    sub rdx, r8
+    ; call _sort
+    jmp _sort ; TRE
 
 .done:
-    add rsp, 8 ; restore stack alignments
     ret
 
 
