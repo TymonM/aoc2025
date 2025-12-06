@@ -8,15 +8,15 @@ section .text
 global _start
 
 _start:
+    call _init
     call _first
 
     xor edi, edi
     mov rax, 0x2000001 ; macOS exit syscall (0x2000000 + 1)
     syscall
 
-_first:
-    mov qword [output], 0 ; total ans
-
+; reads problems and operations
+_init:
     ; read the problems into `problems` so that each problem is contiguous in memory
     ; rdi contians cursor into `input`
     ; rsi contains pointer into `problems`
@@ -54,23 +54,41 @@ _first:
     cmp rcx, input_lines-1
     jl .read_line
 
+    ; now read the operations
+    ; rsi points to `operations` and rdi is input cursor
+    ; rdi reused from problem reading
+    lea rsi, [operations]
+.seek_operation:
+    cmp byte [rdi], 32 ; space
+    jne .found_operation
+    inc rdi
+    jmp .seek_operation
+.found_operation:
+    cmp [rdi], 10 ; if hit newline
+    je .done
+    ; else copy the operation over
+    mov r8b, [rdi]
+    mov byte [rsi], r8b
+    inc rsi
+    inc rdi
+    jmp .seek_operation
+
+.done:
+    ret
+
+_first:
+    mov qword [output], 0 ; total ans
+
     ; rax contains current problem total
     ; rdi points to current problem base in `problems`
-    ; rsi is cursor in 'operations'
+    ; rsi is cursor in `operations`
     ; rcx contains remaining values in this problem
     ; rdx contains remaining problems
-    mov rsi, rdi ; reuse the cursor from problem copy loop
     lea rdi, [problems]
+    lea rsi, [operations]
     mov rdx, problem_count
 .eval_loop:
     mov rcx, input_lines-1
-.seek_operation:
-    ; look for a plus or a *
-    cmp byte [rsi], 32 ; space
-    jne .found_operation
-    inc rsi
-    jmp .seek_operation
-.found_operation:
     cmp byte [rsi], '+'
     je .init_plus
     mov rax, 1 ; initialise as 1 = multiplicative identity
@@ -91,7 +109,7 @@ _first:
     jnz .problem_loop
 
     add [output], rax
-    inc rsi ; skip this + or * char
+    inc rsi ; go to next operation
     lea rdi, [rdi+8*(input_lines-1)] ; step `problems` base
     dec rdx
     jnz .eval_loop
@@ -108,3 +126,4 @@ section .data
 section .bss
 output: resb 8
 problems: resq problem_count * (input_lines-1)
+operations: resb problem_count
