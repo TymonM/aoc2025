@@ -4,5 +4,6 @@ input:
     db "  6 98  215 314", 0xA
     db "*   +   *   +  ", 0xA
 
+input_bytes equ $ - input
 input_lines equ 4
 problem_count equ 4
