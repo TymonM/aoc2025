@@ -8,8 +8,12 @@ global _write_int
 global _read_int
 global _memcmp
 global _memset
+global _memsetq
 global _sort
 global _quickselect
+; ---------- DATA STRUCTURES ----------
+global _dsu_find
+global _dsu_join
 
 ; convert rdi to a string
 ; rdi = integer to convert
@@ -142,6 +146,20 @@ _memset:
 .done:
     ret
 
+; set a contiguous block of memory, a qword at a time
+; rdi = pointer to memory
+; rsi = value to set
+; rdx = number of qwords
+_memsetq:
+    test rdx, rdx
+    jz .done
+.loop:
+    mov qword [rdi], rsi
+    add rdi, 8
+    dec rdx
+    jnz .loop
+.done:
+    ret
 
 ; quicksort an array of 64-bit integers
 ; note: always chooses first element as pivot
@@ -291,3 +309,59 @@ _quickselect:
 
     ret
 
+; ---------- DATA STRUCTURES ----------
+; returns root of DSU component (applying path compression), in which -1 represents 'no parent'
+; rdi = pointer to dsu.parent array
+; rsi = query
+; returns rax = root of component
+_dsu_find:
+    mov r8, [rdi+8*rsi] ; r8 contains the parent
+    cmp r8, -1
+    je .already_root
+
+    ; p[x] = find(p[x])
+    push rsi
+    mov rsi, r8
+    call _dsu_find
+    pop rsi
+    mov [rdi+8*rsi], rax
+    ; rax contains the root from recursive call so ret
+    ret
+.already_root:
+    mov rax, rsi
+    ret
+
+; joins two nodes in the DSU, maintaining component sizes (but NOT merging by size)
+; rdi = pointer to dsu.parent array
+; rsi = pointer to dsu.size array
+; rdx = index a to join
+; rcx = index b to join
+_dsu_join:
+    ; a = find(a)
+    push rsi
+    mov rsi, rdx ; query = a
+    call _dsu_find
+    pop rsi
+    mov rdx, rax ; a = find(a)
+
+    ; b = find(b) similarly
+    push rsi
+    mov rsi, rcx
+    call _dsu_find
+    pop rsi
+    mov rcx, rax
+
+    ; if a == b return
+    cmp rdx, rcx
+    je .done
+
+    ; p[a] = b
+    lea rdi, [rdi+8*rdx]
+    mov [rdi], rcx
+
+    ; size[b] += size[a]
+    mov rdi, [rsi+8*rdx] ; rdi = size[a]
+    lea rsi, [rsi+8*rcx] ; rsi = &size[b]
+    add [rsi], rdi
+.done:
+    ret
