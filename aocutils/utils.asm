@@ -9,6 +9,7 @@ global _read_int
 global _memcmp
 global _memset
 global _sort
+global _quickselect
 
 ; convert rdi to a string
 ; rdi = integer to convert
@@ -213,4 +214,80 @@ _sort:
 .done:
     ret
 
+; quickselect from an array of 64-bit integers in O(n) expected time
+; note: always chooses first element as pivot
+; rdi = pointer to array
+; rsi = pointer to satellite array
+; rdx = number of elements
+; rcx = index to select (0-based)
+; returns nothing, but partitions array so that the first rcx+1 elements
+;     are the smallest rcx+1 elements
+_quickselect:
+    cmp rdx, 1
+    jle .done
+
+    push rcx ; index is now on the stack
+
+    mov rcx, 1
+    mov r8, 0 ; num elements on the left
+
+.partition:
+    cmp rcx, rdx
+    jge .recurse
+
+    mov rax, [rdi + rcx * 8]
+    cmp rax, [rdi]
+    jge .partition_skip
+
+    inc r8
+    ; swap
+    mov rax, [rdi + rcx * 8]
+    mov r9, [rdi + r8 * 8]
+    mov [rdi + rcx * 8], r9
+    mov [rdi + r8 * 8], rax
+    ; swap satellite
+    mov rax, [rsi + rcx * 8]
+    mov r9, [rsi + r8 * 8]
+    mov [rsi + rcx * 8], r9
+    mov [rsi + r8 * 8], rax
+
+.partition_skip:
+    inc rcx
+    jmp .partition
+
+.recurse:
+    ; swap the pivot into place
+    mov rax, [rdi]
+    mov r9, [rdi + r8 * 8]
+    mov [rdi], r9
+    mov [rdi + r8 * 8], rax
+    ; and in the satellite
+    mov rax, [rsi]
+    mov r9, [rsi + r8 * 8]
+    mov [rsi], r9
+    mov [rsi + r8 * 8], rax
+
+    ; if r8 == index, done
+    cmp r8, [rsp]
+    je .done
+
+    ; if r8 > index, recurse left
+    jg .recurse_left
+.recurse_right:
+    pop rcx
+    inc r8
+    sub rcx, r8
+    lea rdi, [rdi + r8 * 8]
+    lea rsi, [rsi + r8 * 8]
+    sub rdx, r8
+    jmp _quickselect
+.recurse_left:
+    pop rcx
+    mov rdx, r8
+    jmp _quickselect
+
+.done:
+    pop rcx ; stored index
+
+    ret
 
