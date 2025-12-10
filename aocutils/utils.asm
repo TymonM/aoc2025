@@ -241,10 +241,10 @@ _sort:
 ; returns nothing, but partitions array so that the first rcx+1 elements
 ;     are the smallest rcx+1 elements
 _quickselect:
+    push rcx ; index is now on the stack
+
     cmp rdx, 1
     jle .done
-
-    push rcx ; index is now on the stack
 
     mov rcx, 1
     mov r8, 0 ; num elements on the left
