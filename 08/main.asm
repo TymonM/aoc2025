@@ -5,6 +5,7 @@ extern _memset
 extern _memsetq
 extern _read_int
 extern _write_int
+extern _sort
 extern _quickselect
 extern _dsu_find
 extern _dsu_join
@@ -15,6 +16,8 @@ global _start
 _start:
     call _init
     call _first
+    call _init
+    call _second
 
     xor edi, edi
     mov rax, 0x2000001 ; macOS exit syscall (0x2000000 + 1)
@@ -77,11 +80,11 @@ _init:
     dec rcx
     jnz .read_points_loop
 
+    call _calc_weights
+
     ret
 
 _first:
-    call _calc_weights
-
     ; keep only the top `steps` shortest weights
     lea rdi, [weights]
     lea rsi, [index_pair_pointers]
@@ -91,6 +94,7 @@ _first:
 
     ; execute the joins
     ; rcx = current join
+    mov rcx, 0
 .join_loop:
     cmp rcx, steps
     jge .done_joining
@@ -162,6 +166,79 @@ _first:
     mov rdi, [output]
     call _write_int
 
+    ret
+
+_second:
+    ; sort by weight
+    lea rdi, [weights]
+    lea rsi, [index_pair_pointers]
+    mov rdx, input_lines*(input_lines-1)/2
+    call _sort
+
+    sub rsp, 16 ; allocate two qwords for last_x
+
+    ; execute the joins
+    ; rcx = current join
+    mov rcx, 0
+.join_loop:
+    cmp rcx, input_lines*(input_lines-1)/2
+    jge .done_joining
+
+    push rcx
+
+    ; rdx := &(p1, p2)
+    lea rdx, [index_pair_pointers]
+    mov rdx, [rdx+8*rcx]
+
+    ; do the join
+    lea rdi, [dsu_parent]
+    lea rsi, [dsu_size]
+    mov rcx, [rdx+8]
+    mov rdx, [rdx]
+    call _dsu_join
+
+    test rax, rax
+    jz .step_join_loop
+
+    ; update last_x
+    pop rcx
+    ; rdx := &(p1, p2)
+    lea rdx, [index_pair_pointers]
+    mov rdx, [rdx+8*rcx]
+    ; rdi := offset first
+    ; rsi := offset second
+    mov rdi, [rdx]
+    mov rsi, [rdx+8]
+    ; mul by 3 so we can index into `points`
+    imul rdi, 3
+    imul rsi, 3
+    ; rdi := first_x
+    ; rsi := second_x
+    lea rax, [points]
+    mov rdi, [rax+8*rdi]
+    mov rsi, [rax+8*rsi]
+    ; and finallyyyy update our last_x values
+    mov [rsp], rdi
+    mov [rsp+8], rsi
+
+    push rcx
+
+.step_join_loop:
+    pop rcx
+    inc rcx
+    jmp .join_loop
+
+.done_joining:
+    ; calculate the answer
+    mov rax, [rsp]
+    imul rax, [rsp+8]
+
+    ; print the answer
+    mov rdi, rax
+    call _write_int
+
+    ; deallocate stack
+    add rsp, 16
     ret
 
 ; calculate the weights for each pair of indices

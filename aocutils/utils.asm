@@ -336,6 +336,7 @@ _dsu_find:
 ; rsi = pointer to dsu.size array
 ; rdx = index a to join
 ; rcx = index b to join
+; returns rax = 1 if a new join occured, or 0 if they were already in the same component
 _dsu_join:
     ; a = find(a)
     push rsi
@@ -351,7 +352,8 @@ _dsu_join:
     pop rsi
     mov rcx, rax
 
-    ; if a == b return
+    ; if a == b return 0
+    xor rax, rax
     cmp rdx, rcx
     je .done
 
@@ -363,5 +365,7 @@ _dsu_join:
     mov rdi, [rsi+8*rdx] ; rdi = size[a]
     lea rsi, [rsi+8*rcx] ; rsi = &size[b]
     add [rsi], rdi
+
+    mov rax, 1
 .done:
     ret
