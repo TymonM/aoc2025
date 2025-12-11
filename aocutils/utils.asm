@@ -11,6 +11,7 @@ global _memset
 global _memsetq
 global _sort
 global _quickselect
+global _compress
 ; ---------- DATA STRUCTURES ----------
 global _dsu_find
 global _dsu_join
@@ -307,6 +308,38 @@ _quickselect:
 .done:
     pop rcx ; stored index
 
+    ret
+
+; compress takes an array of values and builds lookup table for
+;   sorted index of any value in that (deduplicated) array
+; rdi = pointer to input array (input array gets modified during execution)
+; rsi = pointer to output array
+; rdx = length of input array
+_compress:
+    push rdi
+    push rsi
+    push rdx ; save values
+    call _sort
+    pop rdx
+    pop rsi
+    pop rdi
+
+    ; rcx = number of compressed elements so far
+    mov rcx, 0
+.loop:
+    mov r8, [rdi]
+    mov [rsi+8*r8], rcx
+    inc rcx
+.seek_different:
+    ; look for the next different value
+    cmp [rdi], r8
+    jne .loop ; start looping from next unique value
+    add rdi, 8
+    dec rdx
+    jnz .seek_different
+    jmp .done
+
+.done:
     ret
 
 ; ---------- DATA STRUCTURES ----------
