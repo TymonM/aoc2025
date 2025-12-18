@@ -1,0 +1,37 @@
+input:
+    db "0:", 0xA
+    db "###", 0xA
+    db "##.", 0xA
+    db "##.", 0xA
+    db "", 0xA
+    db "1:", 0xA
+    db "###", 0xA
+    db "##.", 0xA
+    db ".##", 0xA
+    db "", 0xA
+    db "2:", 0xA
+    db ".##", 0xA
+    db "###", 0xA
+    db "##.", 0xA
+    db "", 0xA
+    db "3:", 0xA
+    db "##.", 0xA
+    db "###", 0xA
+    db "##.", 0xA
+    db "", 0xA
+    db "4:", 0xA
+    db "###", 0xA
+    db "#..", 0xA
+    db "###", 0xA
+    db "", 0xA
+    db "5:", 0xA
+    db "###", 0xA
+    db ".#.", 0xA
+    db "###", 0xA
+    db "", 0xA
+    db "4x4: 0 0 0 0 2 0", 0xA
+    db "12x5: 1 0 1 0 2 2", 0xA
+    db "12x5: 1 0 1 0 3 2", 0xA
+
+input_lines equ 33
+num_shapes equ 6
