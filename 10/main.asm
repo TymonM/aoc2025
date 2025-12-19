@@ -3,6 +3,7 @@ default rel
 
 extern _read_int
 extern _write_int
+extern _add_doubles
 
 section .text
 global _start
@@ -10,6 +11,7 @@ global _start
 _start:
     call _init
     call _first
+    call _second
 
     xor edi, edi
     mov rax, 0x2000001 ; macOS exit syscall (0x2000000 + 1)
@@ -203,6 +205,23 @@ _first:
 
     add rsp, 24
     ret
+
+_second:
+    ; simply a placeholder add_doubles test for now
+    sub rsp, 8
+    lea rdi, [.pi]
+    lea rsi, [.e]
+    lea rdx, [rsp]
+    call _add_doubles
+    mov rdi, [rsp]
+    call _write_int
+
+    add rsp, 8
+
+    ret
+
+.pi:  dq 3.141592653589793
+.e:  dq 2.718281828459045
 
 
 section .data

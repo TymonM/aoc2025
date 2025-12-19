@@ -28,7 +28,7 @@ LD_CMD = ld
 # The main compilation pattern rule
 # Target: The executable file (e.g., 05/main)
 # Prerequisite: The object file (e.g., 05/main.o) which has an implicit rule defined below
-%: %/main.o aocutils/utils.o
+%: %/main.o aocutils/utils.o aocutils/ilp.o
 	$(LD_CMD) $^ -o $@/main $(LDFLAGS)
 
 # Implicit rule for creating the object file
@@ -39,4 +39,8 @@ LD_CMD = ld
 
 # Rule for creating the utils object file
 aocutils/utils.o: aocutils/utils.asm
+	$(NASM_CMD) $< -o $@
+
+# Rule for creating the ilp object file
+aocutils/ilp.o: aocutils/ilp.asm
 	$(NASM_CMD) $< -o $@
