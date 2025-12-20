@@ -9,6 +9,7 @@ global _read_int
 global _memcmp
 global _memset
 global _memsetq
+global _memcpy
 global _sort
 global _quickselect
 global _compress
@@ -157,6 +158,23 @@ _memsetq:
 .loop:
     mov qword [rdi], rsi
     add rdi, 8
+    dec rdx
+    jnz .loop
+.done:
+    ret
+
+; copy a string of bytes in memory
+; rdi = pointer to source
+; rsi = pointer to destination
+; rdx = number of bytes
+_memcpy:
+    test rdx, rdx
+    jz .done
+.loop:
+    mov al, byte [rdi]
+    mov byte [rsi], al
+    inc rdi
+    inc rsi
     dec rdx
     jnz .loop
 .done:

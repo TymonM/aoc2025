@@ -3,7 +3,8 @@ default rel
 
 extern _read_int
 extern _write_int
-extern _add_doubles
+extern _memcpy
+extern _prepare_big_m
 
 section .text
 global _start
@@ -207,25 +208,39 @@ _first:
     ret
 
 _second:
-    ; simply a placeholder add_doubles test for now
-    sub rsp, 8
-    lea rdi, [.pi]
-    lea rsi, [.e]
-    lea rdx, [rsp]
-    call _add_doubles
-    mov rdi, [rsp]
-    call _write_int
+    lea rdi, [test_tableau]
+    lea rsi, [tableau]
+    mov rdx, 2653*8
+    call _memcpy
 
-    add rsp, 8
+    lea rdi, [tableau]
+    call _prepare_big_m
+
+    ; print dimensions for test
+    lea rax, [tableau]
+    mov rdi, [rax]
+    call _write_int
+    lea rax, [tableau]
+    add rax, 8
+    mov rdi, [rax]
+    call _write_int
 
     ret
 
-.pi:  dq 3.141592653589793
-.e:  dq 2.718281828459045
-
-
 section .data
 %include "10/input.inc"
+test_tableau:
+    dq 4, 6
+    dq 0.0, 0.0, 0.0, 0.0, 1.0, 1.0
+    times 44 dq 0.0
+    dq 0.0, 1.0, 0.0, 0.0, 0.0, 1.0
+    times 44 dq 0.0
+    dq 0.0, 0.0, 1.0, 1.0, 1.0, 0.0
+    times 44 dq 0.0
+    dq 1.0, 1.0, 0.0, 1.0, 0.0, 0.0
+    times 44 dq 0.0
+    times 2300 dq 0.0
+    times 151 dq 0.0
 
 section .bss
 output: resb 8
@@ -234,3 +249,4 @@ targets: resq input_lines ; one bitmask per machine
 ;   For each machine, first is stored one qword S representing that S buttons
 ;   follow. The next S qwords are a qword bitmask for each button
 buttons: resq input_lines*10
+tableau: resq 2 + 50*50 + 50 + 50 + 50 + 1

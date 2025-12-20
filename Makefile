@@ -23,7 +23,7 @@ LD_CMD = ld
 # Prevent make from deleting intermediate object files
 # This is critical for LLDB debugging - the linker creates a debug map in the executable
 # that points to the object files, so they must exist for source-level debugging to work
-.PRECIOUS: %/main.o aocutils/utils.o
+.PRECIOUS: %/main.o aocutils/utils.o aocutils/ilp.o
 
 # The main compilation pattern rule
 # Target: The executable file (e.g., 05/main)
