@@ -229,21 +229,7 @@ _second:
 
 section .data
 %include "10/input.inc"
-test_tableau:
-    dq 4, 6
-    dq 0.0, 0.0, 0.0, 0.0, 1.0, 1.0
-    times 44 dq 0.0
-    dq 0.0, 1.0, 0.0, 0.0, 0.0, 1.0
-    times 44 dq 0.0
-    dq 0.0, 0.0, 1.0, 1.0, 1.0, 0.0
-    times 44 dq 0.0
-    dq 1.0, 1.0, 0.0, 1.0, 0.0, 0.0
-    times 44 dq 0.0
-    times 2300 dq 0.0
-    dq 3.0, 5.0, 4.0, 7.0
-    times 96 dq 0.0
-    dq -1.0, -1.0, -1.0, -1.0, -1.0, -1.0
-    times 45 dq 0.0
+%include "10/test_tableau.inc"
 
 section .bss
 output: resb 8
