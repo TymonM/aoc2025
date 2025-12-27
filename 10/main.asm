@@ -238,4 +238,4 @@ targets: resq input_lines ; one bitmask per machine
 ;   For each machine, first is stored one qword S representing that S buttons
 ;   follow. The next S qwords are a qword bitmask for each button
 buttons: resq input_lines*10
-tableau: resq 2 + 50*50 + 50 + 50 + 50 + 1
+tableau: resq 2 + 50*51 + 51 + 50
