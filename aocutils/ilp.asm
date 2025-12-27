@@ -75,8 +75,6 @@ _prepare_big_m:
     mov rax, [r8]
     add qword [r8+8], rax
 
-    ; TODO: make elimination a separate call, automatically
-    ;   also eliminating outputs, too
     ; eliminate the new `M`s in the objective
     ; rcx is current row we are eliminating
     xor rcx, rcx
@@ -84,33 +82,41 @@ _prepare_big_m:
     cmp rcx, [r8] ; if rcx >= `height`
     jge .done
 
-    ; rdi is constraints cursor
-    ; rsi is objective cursor
-    ; rdx is counter of remaining values in this row
-    mov rdi, r8
-    add rdi, 16 ; skip `width` and `height`
+    lea rdi, [r8 + 8*(2+50*51)] ; output := &objective
+    mov rsi, r8
+    add rsi, 16 ; skip `width` and `height`
     mov rax, rcx
     imul rax, 408 ; 51*8 bytes per row
-    add rdi, rax
-    lea rsi, [r8 + 8*(2+50*51)]
+    add rsi, rax
     mov rdx, 51 ; there are 51 values to eliminate in each row
-
-.eliminate_cell:
-    movsd xmm0, [rdi]
-    movsd xmm1, [big_m]
-    mulsd xmm0, xmm1
-    movsd xmm1, [rsi]
-    addsd xmm1, xmm0
-    movsd [rsi], xmm1
-
-    add rdi, 8
-    add rsi, 8
-    dec rdx
-    jnz .eliminate_cell
+    movsd xmm0, [big_m]
+    call _eliminate
 
     inc rcx
     jmp .eliminate_row
 
+.done:
+    ret
+
+; add a scalar multiple of one row to another
+; rdi = pointer to 'output' row
+; rsi = pointer to 'input' row
+; rdx = 'length' of the row, in qwords
+; xmm0 = scalar by which to multiply
+_eliminate:
+    test rdx, rdx
+    jz .done
+.loop:
+    movsd xmm1, [rdi]
+    movsd xmm2, [rsi]
+    mulsd xmm2, xmm0
+    addsd xmm1, xmm2
+    movsd [rdi], xmm1
+
+    add rdi, 8
+    add rsi, 8
+    dec rdx
+    jnz .loop
 .done:
     ret
 
