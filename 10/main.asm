@@ -5,6 +5,7 @@ extern _read_int
 extern _write_int
 extern _memcpy
 extern _prepare_big_m
+extern _do_big_m
 
 section .text
 global _start
@@ -216,14 +217,8 @@ _second:
     lea rdi, [tableau]
     call _prepare_big_m
 
-    ; print dimensions for test
-    lea rax, [tableau]
-    mov rdi, [rax]
-    call _write_int
-    lea rax, [tableau]
-    add rax, 8
-    mov rdi, [rax]
-    call _write_int
+    lea rdi, [tableau]
+    call _do_big_m
 
     ret
 

@@ -5,8 +5,11 @@
 
 default rel
 
+extern _write_int
+
 section .text
 global _prepare_big_m
+global _do_big_m
 
 ; creates artificial variables and scale them in the objective function
 ; rdi = pointer to tableau
@@ -98,6 +101,51 @@ _prepare_big_m:
 .done:
     ret
 
+; Maximize the objective function, subject to the **equality** constraints in the tableau, using the
+;   big-M method
+; The maximization is performed in-place, modifying the tableau
+; Objective value can be extracted from `objective_output` after completion. WARNING: it will be negated!
+; The solution can be recreated by looking at the `corresponding_columns` data
+; rdi = pointer to tableau (should have been prepared by _prepare_big_m)
+_do_big_m:
+    mov r8, rdi
+
+    ; find column with most positive coefficient in the objective function
+    ; xmm0 = current min coefficient value
+    ; rdx = best column index
+    ; rcx = current column we are considering
+    ; rdi = objective cursor
+    movsd xmm0, [neg_infty]
+    mov rdx, 0
+    mov rcx, 0
+    lea rdi, [r8 + 8*(2+50*51)]
+.max_column_loop:
+    cmp rcx, 50
+    jge .found_pivot_col
+
+    movsd xmm1, [rdi]
+    comisd xmm0, xmm1
+    jae .next_column
+    movsd xmm0, xmm1
+    mov rdx, rcx
+.next_column:
+    add rdi, 8
+    inc rcx
+    jmp .max_column_loop
+
+.found_pivot_col:
+    ; if max <= 0, break since we are done maximizing
+    movsd xmm1, [epsilon]
+    comisd xmm0, xmm1
+    jb .done
+
+    ; print for debug only
+    mov rdi, rdx
+    call _write_int
+
+.done:
+    ret
+
 ; add a scalar multiple of one row to another
 ; rdi = pointer to 'output' row
 ; rsi = pointer to 'input' row
@@ -122,6 +170,8 @@ _eliminate:
 
 section .data
 big_m: dq 100.0
+epsilon: dq 0.0000001
+neg_infty: dq -1000000000000000000.0
 
 section .bss
 ; a tableau is stored in memory as 2653 qwords:
