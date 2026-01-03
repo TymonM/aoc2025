@@ -5,8 +5,6 @@
 
 default rel
 
-extern _write_int
-
 section .text
 global _prepare_big_m
 global _do_big_m
@@ -110,6 +108,11 @@ _prepare_big_m:
 _do_big_m:
     mov r8, rdi
 
+    ; [rsp] = pivot col
+    ; [rsp+8] = pivot row
+    sub rsp, 16
+
+.main_loop:
     ; find column with most positive coefficient in the objective function
     ; xmm0 = current min coefficient value
     ; rdx = best column index
@@ -139,10 +142,121 @@ _do_big_m:
     comisd xmm0, xmm1
     jb .done
 
-    ; print for debug only
-    mov rdi, rdx
-    call _write_int
+    ; look for min ratio
+    ; xmm0 = current min ratio
+    ; rdx is still pivot column index
+    ; rdi = best row index
+    ; rcx = current row we are considering
+    ; rsi = base pointer to current row
+    movsd xmm0, [infty]
+    mov rdi, 0
+    mov rcx, 0
+    lea rsi, [r8 + 8*2]
+.min_ratio_loop:
+    cmp rcx, [r8]
+    jge .found_min_ratio
+    
+    ; xmm1 := pivot value
+    movsd xmm1, [rsi + 8*rdx]
 
+    ; if pivot value <= 0, continue
+    movsd xmm2, [epsilon]
+    comisd xmm1, xmm2
+    jb .next_ratio_row
+
+    ; xmm2 := (output value / pivot value)
+    movsd xmm2, [rsi + 8*50]
+    divsd xmm2, xmm1
+
+    ; if worse ratio, continue
+    comisd xmm2, xmm0
+    ja .next_ratio_row
+    movsd xmm0, xmm2
+    mov rdi, rcx
+
+.next_ratio_row:
+    add rsi, 8*51
+    inc rcx
+    jmp .min_ratio_loop
+
+.found_min_ratio:
+    ; save pivots on stack
+    mov [rsp], rdx
+    mov [rsp+8], rdi
+
+    ; xmm1 := pivot value
+    mov rax, [rsp+8]
+    imul rax, 51*8
+    lea rax, [r8 + 2*8 + rax] ; base of row
+    movsd xmm1, [rax + 8*rdx]
+    ; xmm0 := reciprocal of pivot value
+    movsd xmm0, [one]
+    divsd xmm0, xmm1
+
+    ; rescale pivot row
+    mov rdi, rax
+    mov rsi, 51
+    call _scale_row
+
+    ; eliminate all rows (including objective)
+    ; rcx = current row index we are eliminating
+    ; rdi = base pointer to current row
+    ; rsi = base pointer to pivot row
+    mov rcx, 0
+    lea rdi, [r8 + 8*2]
+    mov rax, [rsp+8]
+    imul rax, 51*8
+    lea rsi, [r8 + 2*8 + rax]
+.eliminate_rows_loop:
+    cmp rcx, 51
+    jge .done_eliminating_rows
+
+    ; if row == pivot, continue
+    cmp rcx, [rsp+8]
+    je .skip_eliminate_row
+
+    mov rdx, 51
+    mov rax, [rsp]
+    movsd xmm0, [rdi+8*rax]
+    movsd xmm1, [neg_one]
+    mulsd xmm0, xmm1
+    call _eliminate
+
+    sub rsi, 8*51 ; move back base pointer
+    jmp .eliminate_next_row
+.skip_eliminate_row:
+    add rdi, 8*51 ; step over this row
+.eliminate_next_row:
+    inc rcx
+    jmp .eliminate_rows_loop
+
+.done_eliminating_rows:
+    ; update corresponding column
+    mov rax, [rsp+8]
+    lea rax, [r8 + 2 + 50*51 + 51 + 8*rax]
+    mov rbx, [rsp]
+    mov [rax], rbx
+    jmp .main_loop
+
+.done:
+    add rsp, 16
+    ret
+
+; scale all values in a row by a scalar
+; rdi = pointer to row
+; rsi = 'length' of the row, in qwords
+; xmm0 = scalar by which to multiply
+_scale_row:
+    test rsi, rsi
+    jz .done
+.loop:
+    movsd xmm1, [rdi]
+    mulsd xmm1, xmm0
+    movsd [rdi], xmm1
+
+    add rdi, 8
+    dec rsi
+    jnz .loop
 .done:
     ret
 
@@ -171,6 +285,9 @@ _eliminate:
 section .data
 big_m: dq 100.0
 epsilon: dq 0.0000001
+one: dq 1.0
+neg_one: dq -1.0
+infty: dq 1000000000000000000.0
 neg_infty: dq -1000000000000000000.0
 
 section .bss
